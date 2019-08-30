@@ -17,7 +17,68 @@ def Warn(parent, message, caption = 'Warning!'):
 	dlg = wx.MessageDialog(parent, message, caption, wx.OK | wx.ICON_WARNING)
 	dlg.ShowModal()
 	dlg.Destroy()
-  
+
+
+class SettingsDialog(wx.Dialog):
+	""" This window displays the settings that can be used to configure the buttons """
+	def __init__(self, *args, **kwargs):
+		wx.Dialog.__init__(self, *args, **kwargs)
+
+		vbox = wx.BoxSizer(wx.VERTICAL)
+		tt = wx.StaticText(self, -1, "Buttons") 		
+		vbox.Add(tt, -1, wx.EXPAND | wx.ALIGN_LEFT | wx.ALL, 5)
+
+		self.ti = wx.TextCtrl(self, size = (200,120),style = wx.TE_MULTILINE) 		
+		vbox.Add(self.ti, 1 ,wx.EXPAND | wx.ALIGN_LEFT | wx.ALL, 0)
+
+		hbox = wx.BoxSizer(wx.HORIZONTAL)
+		saveButton = wx.Button(self, label='Save && Close')
+		saveButton.Bind(wx.EVT_BUTTON, self.OnSave)
+		cancelButton = wx.Button(self, label='Cancel')
+		cancelButton.Bind(wx.EVT_BUTTON, self.OnCancel)
+		hbox.Add(saveButton, -1, wx.ALL, 5)
+		hbox.Add(cancelButton, -1, wx.ALL, 5)
+
+		vbox.Add(hbox, 1, wx.EXPAND | wx.ALL, 5)
+		self.SetSizer(vbox)
+
+		# Fill in text control field with entries from ini file
+		config = configparser.ConfigParser()
+		config.optionxform = str 
+		config.read('config.ini')
+		if config.has_section('Buttons') == True:		
+			button_dict = dict(config['Buttons'])
+			for ii in range(len(button_dict)):
+				self.ti.AppendText('%s\n' % button_dict['Button%d' % (ii+1)])
+			
+	def OnCancel(self, event):
+		self.Destroy()
+
+	def OnSave(self, event):
+		# save ini file
+		config = configparser.ConfigParser()
+		config.optionxform = str 
+		config.read('config.ini')
+
+		new_button_dict = dict()
+		count = 1
+		for ii in range(self.ti.GetNumberOfLines()):
+			if self.ti.GetLineLength(ii) > 0:
+				new_button_dict['Button%d' % count] = self.ti.GetLineText(ii)
+				count += 1
+		if count > 21:
+			Warn(self,'Too many categories (max 20)')
+		else:
+			config['Buttons'] = new_button_dict
+			with open('config.ini', 'w') as config_file:
+				config.write(config_file)		
+		
+		Warn(self, 'Restart program for changes to become effective')
+		self.Destroy()
+
+
+
+# Main Window
 class ProjectFrame(wx.Frame):
 	""" This window displays a set of buttons curresponding to the different projects """
 	def __init__(self, *args, **kwargs):
@@ -87,6 +148,11 @@ class ProjectFrame(wx.Frame):
 		consolidate_button.SetFont(wx.Font(16, wx.SWISS, wx.NORMAL, wx.NORMAL))
 		sizer_extra.Add(consolidate_button, 0, wx.ALL, 10)		
 		
+		# settings button
+		settings_button = wx.Button(self, label='Settings')
+		settings_button.Bind(wx.EVT_BUTTON, self.OnSettings)
+		sizer_extra.Add(settings_button, 0, wx.ALL | wx.ALIGN_BOTTOM | wx.EXPAND, 10)
+
 		# put everything together
 		sizer_global = wx.BoxSizer(wx.HORIZONTAL)
 		for i in sizer_toggle: sizer_global.Add(i, 0, wx.ALL, 0)
@@ -179,6 +245,12 @@ class ProjectFrame(wx.Frame):
 		
 		self.old_active_button = active_index
 		if deactiveate_action == True: self.old_active_button = -1
+
+	def OnSettings(self, Event):
+		settingsDialog = SettingsDialog(None, title='Settings')
+		settingsDialog.ShowModal()
+		settingsDialog.Destroy()
+			
 
 	def OnExit(self, Event):
 		# if button is active, write it out

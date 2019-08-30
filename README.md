@@ -9,7 +9,9 @@ This program can also be handy for checking if the time you spend on a project i
 ## Configuration
 The program is written in python. I recommend to use a virtual environment or a Python distribution like [Anaconda](https://www.anaconda.com/). Anaconda is also the preferred method to install a complete Python environment on a Windows machine. If you are using Anaconda, I advise you to create an environment within which you run the code. You can directly create the environment for running the notebooks using the provided environment.yml file using `conda env create -f environment.yml`. You can then activate the envinronment using `conda activate track_project`.
 
-To configure the program you should edit the `config.ini` file. In the `[Buttons]` section, you can specify the different tasks and projects. Every task is assigned a `ButtonX` variable, where `X` should be replaced by a numeral counting from 1 to the number of buttons. For example
+To configure the program, you can press the _Settings_ button in the program, which will open a small window where you can type in the name of the buttons inside the field. Each line corresponds to a button. Currently, you need to restart the program for the changes to become effective.
+
+Alternatively, you can also configure the program by editing the `config.ini` file. In the `[Buttons]` section, you can specify the different tasks and projects. Every task is assigned a `ButtonX` variable, where `X` should be replaced by a numeral counting from 1 to the number of buttons. For example
 * `Button1 = Research`
 * `Button2 = Powerpoint`
 
