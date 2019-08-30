@@ -73,8 +73,8 @@ class SettingsDialog(wx.Dialog):
 			with open('config.ini', 'w') as config_file:
 				config.write(config_file)		
 		
-		Warn(self, 'Restart program for changes to become effective')
-		self.Destroy()
+			Warn(self, 'Restart program for changes to become effective')
+			self.Destroy()
 
 
 
