@@ -19,28 +19,29 @@ def Warn(parent, message, caption = 'Warning!'):
 	dlg.Destroy()
 
 
-class SettingsDialog(wx.Dialog):
+class SettingsDialog(wx.Frame):
 	""" This window displays the settings that can be used to configure the buttons """
 	def __init__(self, *args, **kwargs):
-		wx.Dialog.__init__(self, *args, **kwargs)
+		wx.Frame.__init__(self, *args, **kwargs)
 
 		vbox = wx.BoxSizer(wx.VERTICAL)
 		tt = wx.StaticText(self, -1, "Buttons") 		
-		vbox.Add(tt, -1, wx.EXPAND | wx.ALIGN_LEFT | wx.ALL, 5)
+		vbox.Add(tt, 0, wx.EXPAND | wx.ALIGN_LEFT | wx.ALL, 5)
 
-		self.ti = wx.TextCtrl(self, size = (200,120),style = wx.TE_MULTILINE) 		
-		vbox.Add(self.ti, 1 ,wx.EXPAND | wx.ALIGN_LEFT | wx.ALL, 0)
+		self.ti = wx.TextCtrl(self, size = (200,200),style = wx.TE_MULTILINE) 		
+		vbox.Add(self.ti, 0 ,wx.EXPAND | wx.ALIGN_LEFT | wx.ALL, 5)
 
 		hbox = wx.BoxSizer(wx.HORIZONTAL)
 		saveButton = wx.Button(self, label='Save && Close')
 		saveButton.Bind(wx.EVT_BUTTON, self.OnSave)
 		cancelButton = wx.Button(self, label='Cancel')
 		cancelButton.Bind(wx.EVT_BUTTON, self.OnCancel)
-		hbox.Add(saveButton, -1, wx.ALL, 5)
-		hbox.Add(cancelButton, -1, wx.ALL, 5)
+		hbox.Add(saveButton, 0, wx.ALL, 5)
+		hbox.Add(cancelButton, 0, wx.ALL, 5)
 
-		vbox.Add(hbox, 1, wx.EXPAND | wx.ALL, 5)
+		vbox.Add(hbox, 0, wx.EXPAND | wx.ALL, 5)
 		self.SetSizer(vbox)
+		self.Fit()
 
 		# Fill in text control field with entries from ini file
 		config = configparser.ConfigParser()
@@ -248,8 +249,7 @@ class ProjectFrame(wx.Frame):
 
 	def OnSettings(self, Event):
 		settingsDialog = SettingsDialog(None, title='Settings')
-		settingsDialog.ShowModal()
-		settingsDialog.Destroy()
+		settingsDialog.Show()
 			
 
 	def OnExit(self, Event):
