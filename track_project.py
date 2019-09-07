@@ -74,7 +74,7 @@ class SettingsDialog(wx.Frame):
 			with open('config.ini', 'w') as config_file:
 				config.write(config_file)		
 		
-			Warn(self, 'Restart program for changes to become effective')
+			Warn(self, 'Click redraw for changes to become effective')
 			self.Destroy()
 
 
@@ -84,14 +84,6 @@ class ProjectFrame(wx.Frame):
 	""" This window displays a set of buttons curresponding to the different projects """
 	def __init__(self, *args, **kwargs):
 		wx.Frame.__init__(self, *args, **kwargs)
-			
-		self.read_config_file()
-		if len(self.button_name_list) == 0:
-			self.Close()
-				
-		if len(self.button_name_list) > 20:
-			Warn(self, 'Too many categories (max 20)')
-			self.Close()
 
 		# check if datafiles directory exists, otherwise create it
 		try:
@@ -99,51 +91,34 @@ class ProjectFrame(wx.Frame):
 		except FileExistsError:
 			# directory exists
 			pass
-		
-		
-		# generate list with buttons
-		button_height = round(800 / min(10,len(self.button_name_list)))
-		button_width = round(3.5 * button_height)
-		
+
+	
 		self.old_active_button = -1
 		self.start_time = -1
-		self.btn_list = [wx.lib.buttons.GenToggleButton(self,label=bn,size=(button_width,button_height)) for bn in self.button_name_list]
 		
-		# grid sizer		
-		if len(self.button_name_list) <= 10:			
-			sizer_toggle = [wx.BoxSizer(wx.VERTICAL)] 
-			first_rows = len(self.button_name_list)
-		else:
-			sizer_toggle = [wx.BoxSizer(wx.VERTICAL), wx.BoxSizer(wx.VERTICAL)]
-			first_rows = math.ceil(len(self.button_name_list)/2.0)
+		# grid sizer list
+		self.sizer_toggle = [wx.BoxSizer(wx.VERTICAL), wx.BoxSizer(wx.VERTICAL)]		
+	
+		# generate data structures for toggle buttons
+		self.configure_buttons()	
 		
-		# add to respective sizers
-		for i in range(len(self.button_name_list)):			
-			self.btn_list[i].Bind(wx.EVT_BUTTON, lambda evt, ai=i: self.OnButton(evt, ai) )
-			self.btn_list[i].SetBackgroundColour(self.color_list[i])
-			self.btn_list[i].SetForegroundColour('#000000')
-			self.btn_list[i].SetFont(wx.Font(22, wx.SWISS, wx.NORMAL, wx.NORMAL))
-			self.btn_list[i].SetValue(False)			
-			sizer_toggle[i//first_rows].Add(self.btn_list[i], 0, wx.ALL, 5)
-		
-			
 		# add extra buttons
 		sizer_extra = wx.BoxSizer(wx.VERTICAL)
 		
 		# Self-explanatory, exists the program
-		exit_button = wx.Button(self,label='Exit',size=(button_width//2,button_height//2))
+		exit_button = wx.Button(self,label='Exit',size=(self.button_width//2,self.button_height//2))
 		exit_button.Bind(wx.EVT_BUTTON, self.OnExit)
 		exit_button.SetFont(wx.Font(16, wx.SWISS, wx.NORMAL, wx.NORMAL))
 		sizer_extra.Add(exit_button, 0, wx.ALL, 10)
 		
 		# Converts the datebase into an excel-sheet
-		convert_button = wx.Button(self, label='Convert', size=(button_width//2,button_height//2))
+		convert_button = wx.Button(self, label='Convert', size=(self.button_width//2,self.button_height//2))
 		convert_button.Bind(wx.EVT_BUTTON, self.OnConvert)
 		convert_button.SetFont(wx.Font(16, wx.SWISS, wx.NORMAL, wx.NORMAL))
 		sizer_extra.Add(convert_button, 0, wx.ALL, 10)
 		
 		# consolidate the database by grouping identical entries that happened on the same day. Will destroy the sequence, so use with care
-		consolidate_button = wx.Button(self, label='Consolidate', size=(button_width//2,button_height//2))
+		consolidate_button = wx.Button(self, label='Consolidate', size=(self.button_width//2,self.button_height//2))
 		consolidate_button.Bind(wx.EVT_BUTTON, self.OnConsolidate)
 		consolidate_button.SetFont(wx.Font(16, wx.SWISS, wx.NORMAL, wx.NORMAL))
 		sizer_extra.Add(consolidate_button, 0, wx.ALL, 10)		
@@ -153,14 +128,62 @@ class ProjectFrame(wx.Frame):
 		settings_button.Bind(wx.EVT_BUTTON, self.OnSettings)
 		sizer_extra.Add(settings_button, 0, wx.ALL | wx.ALIGN_BOTTOM | wx.EXPAND, 10)
 
+		redraw_button = wx.Button(self, label='Redraw')
+		redraw_button.Bind(wx.EVT_BUTTON, self.OnRedraw)
+		sizer_extra.Add(redraw_button, 0, wx.ALL | wx.ALIGN_BOTTOM | wx.EXPAND, 10)
+
 		# put everything together
-		sizer_global = wx.BoxSizer(wx.HORIZONTAL)
-		for i in sizer_toggle: sizer_global.Add(i, 0, wx.ALL, 0)
-		sizer_global.Add(sizer_extra, 0, wx.ALL, 20)
-		self.SetSizerAndFit(sizer_global)
+		self.sizer_global = wx.BoxSizer(wx.HORIZONTAL)
+		for i in self.sizer_toggle: self.sizer_global.Add(i, 0, wx.ALL, 0)
+		self.sizer_global.Add(sizer_extra, 0, wx.ALL, 20)
+		self.SetSizerAndFit(self.sizer_global)
 		
 
 
+	def configure_buttons(self):
+		self.read_config_file()
+		if len(self.button_name_list) == 0:
+			Warn(self, 'Zero categories, will close')
+			self.Close()
+				
+		if len(self.button_name_list) > 20:
+			Warn(self, 'Too many categories (max 20)')
+			self.Close()
+
+		# generate list with buttons, first the size
+		self.button_height = round(800 / min(10,len(self.button_name_list)))
+		self.button_width = round(3.5 * self.button_height)
+
+		self.btn_list = [wx.lib.buttons.GenToggleButton(self,label=bn,size=(self.button_width, self.button_height)) for bn in self.button_name_list]
+
+		if len(self.button_name_list) <= 10:						
+			self.first_rows = len(self.button_name_list)
+		else:			
+			self.first_rows = math.ceil(len(self.button_name_list)/2.0)
+		
+		# add to respective sizers
+		for i in range(len(self.button_name_list)):			
+			self.btn_list[i].Bind(wx.EVT_BUTTON, lambda evt, ai=i: self.OnButton(evt, ai) )
+			self.btn_list[i].SetBackgroundColour(self.color_list[i])
+			self.btn_list[i].SetForegroundColour('#000000')
+			self.btn_list[i].SetFont(wx.Font(22, wx.SWISS, wx.NORMAL, wx.NORMAL))
+			self.btn_list[i].SetValue(False)			
+			self.sizer_toggle[i//self.first_rows].Add(self.btn_list[i], 0, wx.ALL, 5)
+
+
+
+	def OnRedraw(self, Event):
+		# clear toggle button sizers
+		for i in range(len(self.sizer_toggle)):
+			while self.sizer_toggle[i].GetChildren():
+				self.sizer_toggle[i].Hide(0)
+				self.sizer_toggle[i].Remove(0)            
+
+		# reconfigure buttons and draw layout
+		self.configure_buttons()
+		self.Layout()			
+		self.Fit()
+		self.sizer_global.Fit()
 		
 	# the the config.ini file and generate the buttons
 	def read_config_file(self):
