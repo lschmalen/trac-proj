@@ -88,8 +88,7 @@ class ProjectFrame(wx.Frame):
 		self.read_config_file()
 		if len(self.button_name_list) == 0:
 			self.Close()
-		
-		print(self.color_list)
+				
 		if len(self.button_name_list) > 20:
 			Warn(self, 'Too many categories (max 20)')
 			self.Close()
