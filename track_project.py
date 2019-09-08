@@ -24,6 +24,7 @@ class SettingsDialog(wx.Frame):
 	def __init__(self, *args, **kwargs):
 		wx.Frame.__init__(self, *args, **kwargs)
 
+		self.frame = wx.GetApp().TopWindow
 		vbox = wx.BoxSizer(wx.VERTICAL)
 		tt = wx.StaticText(self, -1, "Buttons") 		
 		vbox.Add(tt, 0, wx.EXPAND | wx.ALIGN_LEFT | wx.ALL, 5)
@@ -72,9 +73,9 @@ class SettingsDialog(wx.Frame):
 		else:
 			config['Buttons'] = new_button_dict
 			with open('config.ini', 'w') as config_file:
-				config.write(config_file)		
+				config.write(config_file)						
 		
-			Warn(self, 'Click redraw for changes to become effective')
+			self.frame.redraw_toggle_buttons()
 			self.Destroy()
 
 
@@ -128,9 +129,6 @@ class ProjectFrame(wx.Frame):
 		settings_button.Bind(wx.EVT_BUTTON, self.OnSettings)
 		sizer_extra.Add(settings_button, 0, wx.ALL | wx.ALIGN_BOTTOM | wx.EXPAND, 10)
 
-		redraw_button = wx.Button(self, label='Redraw')
-		redraw_button.Bind(wx.EVT_BUTTON, self.OnRedraw)
-		sizer_extra.Add(redraw_button, 0, wx.ALL | wx.ALIGN_BOTTOM | wx.EXPAND, 10)
 
 		# put everything together
 		self.sizer_global = wx.BoxSizer(wx.HORIZONTAL)
@@ -138,8 +136,6 @@ class ProjectFrame(wx.Frame):
 		self.sizer_global.Add(sizer_extra, 0, wx.ALL, 20)
 		self.SetSizerAndFit(self.sizer_global)
 		
-
-
 	def configure_buttons(self):
 		self.read_config_file()
 		if len(self.button_name_list) == 0:
@@ -171,19 +167,22 @@ class ProjectFrame(wx.Frame):
 			self.sizer_toggle[i//self.first_rows].Add(self.btn_list[i], 0, wx.ALL, 5)
 
 
+	def redraw_toggle_buttons(self):
+		if self.old_active_button >= 0:			
+			Warn(self, 'Stopping current activity ... please restart activity after reconfiguration')
+			# deactivate button if activity ongoing
+			self.OnButton(wx.EVT_BUTTON, self.old_active_button)
 
-	def OnRedraw(self, Event):
 		# clear toggle button sizers
 		for i in range(len(self.sizer_toggle)):
 			while self.sizer_toggle[i].GetChildren():
 				self.sizer_toggle[i].Hide(0)
-				self.sizer_toggle[i].Remove(0)            
+				self.sizer_toggle[i].Remove(0)            		
 
 		# reconfigure buttons and draw layout
 		self.configure_buttons()
 		self.Layout()			
 		self.Fit()
-		self.sizer_global.Fit()
 		
 	# the the config.ini file and generate the buttons
 	def read_config_file(self):
@@ -229,7 +228,16 @@ class ProjectFrame(wx.Frame):
 		today = datetime.datetime.now()
 		filename = 'datafiles/track%d_%d_%d.lstrac' % (today.year, today.month, today.day)
 		return filename
-		
+
+	# write the time spent on an activity to a file		
+	def write_spent_time(self):
+		stop_time = datetime.datetime.now()
+		print('Spent %d seconds on %s' % ((stop_time-self.start_time).total_seconds(), self.button_name_list[self.old_active_button]))
+		# write to file						
+		with open(self.get_file_name(), 'a') as fd:
+			fd.write('%s,%d\n' % (self.button_name_list[self.old_active_button],(stop_time-self.start_time).total_seconds()))			
+
+
 	# When a toggle button is activated	
 	def OnButton(self, Event, active_index):					
 		deactiveate_action = False
@@ -257,12 +265,7 @@ class ProjectFrame(wx.Frame):
 		if self.old_active_button == -1:
 			self.start_time = datetime.datetime.now()
 		else:
-			stop_time = datetime.datetime.now()
-			print('Spent %d seconds on %s' % ((stop_time-self.start_time).total_seconds(), self.button_name_list[self.old_active_button]))
-			# write to file						
-			with open(self.get_file_name(), 'a') as fd:
-				fd.write('%s,%d\n' % (self.button_name_list[self.old_active_button],(stop_time-self.start_time).total_seconds()))
-				fd.close()
+			self.write_spent_time()
 			# get new start time for next call
 			self.start_time = datetime.datetime.now()
 		
@@ -276,14 +279,10 @@ class ProjectFrame(wx.Frame):
 
 	def OnExit(self, Event):
 		# if button is active, write it out
-		if self.old_active_button >= 0:
+		if self.old_active_button >= 0:			
 			# write the current active one to the file
-			stop_time = datetime.datetime.now()
-			#print('Spent %d seconds on %s' % ((stop_time-self.start_time).total_seconds(), self.button_name_list[self.old_active_button]))
-			# write to file						
-			fd = open(self.get_file_name(), 'a')
-			fd.write('%s,%d\n' % (self.button_name_list[self.old_active_button],(stop_time-self.start_time).total_seconds()))
-			fd.close()						
+			self.write_spent_time()
+
 		self.Close()
 
 	# Convert the data to an Excel file with weekly and daily statistics
@@ -401,12 +400,10 @@ class ProjectFrame(wx.Frame):
 					for row in reader: 				
 						if not ''.join(row).strip(): continue
 						c.update({row[0] : int(row[1])})
-				
-					file.close()
+									
 				with open(filename,mode='w') as file:
 					for ci in c:
-						file.write('%s,%d\n'%(ci,c[ci]))
-					file.close();
+						file.write('%s,%d\n'%(ci,c[ci]))					
 		return
 		
 app = wx.App(False)
