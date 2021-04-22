@@ -1,5 +1,6 @@
 import wx
 import wx.lib.buttons
+import wx.lib.intctrl
 import datetime
 import configparser
 import math
@@ -18,7 +19,72 @@ def Warn(parent, message, caption = 'Warning!'):
 	dlg.ShowModal()
 	dlg.Destroy()
 
+# generate file name with the current date
+def get_file_name():
+	today = datetime.datetime.now()
+	filename = 'datafiles/track%d_%d_%d.lstrac' % (today.year, today.month, today.day)
+	return filename
 
+
+class ManualentryDialog(wx.Frame):
+	""" This window allows to manually enter a setting if we forgot to track """
+	def __init__(self, *args, **kwargs):
+		wx.Frame.__init__(self, *args, **kwargs)
+		
+		self.frame = wx.GetApp().TopWindow		
+		vbox = wx.BoxSizer(wx.VERTICAL)
+		
+		self.tsel = wx.ComboBox(self)
+		vbox.Add(self.tsel, 0, wx.EXPAND | wx.ALIGN_LEFT | wx.ALL, 5)
+		
+		hbox1 = wx.BoxSizer(wx.HORIZONTAL)		
+		self.tmin = wx.lib.intctrl.IntCtrl( self, size=( 50, -1 ) )
+		tt = wx.StaticText(self, -1, "Minutes") 		
+		hbox1.Add(self.tmin, 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
+		hbox1.Add(tt, 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)		
+		vbox.Add(hbox1, 0, wx.EXPAND | wx.ALL, 5)
+		
+		
+		hbox2 = wx.BoxSizer(wx.HORIZONTAL)
+		saveButton = wx.Button(self, label='Save && Close')
+		saveButton.Bind(wx.EVT_BUTTON, self.OnSave)
+		cancelButton = wx.Button(self, label='Cancel')
+		cancelButton.Bind(wx.EVT_BUTTON, self.OnCancel)
+		hbox2.Add(saveButton, 0, wx.ALL, 5)
+		hbox2.Add(cancelButton, 0, wx.ALL, 5)
+
+		vbox.Add(hbox2, 0, wx.EXPAND | wx.ALL, 5)
+		self.SetSizer(vbox)
+		self.Fit()		
+				
+		# Fill in combo box field with entries from ini file
+		config = configparser.ConfigParser()
+		config.optionxform = str 
+		config.read('config.ini')
+		if config.has_section('Buttons') == True:		
+			button_dict = dict(config['Buttons'])
+			for ii in range(len(button_dict)):
+				self.tsel.Append('%s\n' % button_dict['Button%d' % (ii+1)])
+				
+	def OnCancel(self, event):
+		self.Destroy()
+
+	def OnSave(self, event):
+		selection = self.tsel.GetValue()
+		if selection == "":
+			Warn(self,'Please select a category')
+		else:
+			selection = selection.replace('\n','').replace('\r','')
+			seconds = self.tmin.GetValue()*60
+			print('Spent %d seconds on %s' % (seconds, selection))
+			# write to file						
+			with open(get_file_name(), 'a') as fd:
+				fd.write('%s,%d\n' % (selection,seconds))						
+			self.Destroy()
+		
+		
+		
+		
 class SettingsDialog(wx.Frame):
 	""" This window displays the settings that can be used to configure the buttons """
 	def __init__(self, *args, **kwargs):
@@ -124,6 +190,12 @@ class ProjectFrame(wx.Frame):
 		consolidate_button.SetFont(wx.Font(16, wx.SWISS, wx.NORMAL, wx.NORMAL))
 		sizer_extra.Add(consolidate_button, 0, wx.ALL, 10)		
 		
+		# manual entry button
+		manualentry_button = wx.Button(self, label='Manual Entry', size=(self.button_width//2,self.button_height//2))
+		manualentry_button.Bind(wx.EVT_BUTTON, self.OnManualEntry)
+		manualentry_button.SetFont(wx.Font(16, wx.SWISS, wx.NORMAL, wx.NORMAL))
+		sizer_extra.Add(manualentry_button, 0, wx.ALL, 10)
+		
 		# settings button
 		settings_button = wx.Button(self, label='Settings')
 		settings_button.Bind(wx.EVT_BUTTON, self.OnSettings)
@@ -223,18 +295,13 @@ class ProjectFrame(wx.Frame):
 			xsr[idx] += 1			
 		return xsr
 	
-	# generate file name with the current date
-	def get_file_name(self):
-		today = datetime.datetime.now()
-		filename = 'datafiles/track%d_%d_%d.lstrac' % (today.year, today.month, today.day)
-		return filename
 
 	# write the time spent on an activity to a file		
 	def write_spent_time(self):
 		stop_time = datetime.datetime.now()
 		print('Spent %d seconds on %s' % ((stop_time-self.start_time).total_seconds(), self.button_name_list[self.old_active_button]))
 		# write to file						
-		with open(self.get_file_name(), 'a') as fd:
+		with open(get_file_name(), 'a') as fd:
 			fd.write('%s,%d\n' % (self.button_name_list[self.old_active_button],(stop_time-self.start_time).total_seconds()))			
 
 
@@ -271,6 +338,10 @@ class ProjectFrame(wx.Frame):
 		
 		self.old_active_button = active_index
 		if deactiveate_action == True: self.old_active_button = -1
+
+	def OnManualEntry(self, Event):
+		manualentryDialog = ManualentryDialog(None, title='Manual Entry')
+		manualentryDialog.Show()
 
 	def OnSettings(self, Event):
 		settingsDialog = SettingsDialog(None, title='Settings')
